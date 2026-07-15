@@ -34,11 +34,22 @@ session = cnx.session()
 
 fruit_df = (
     session.table("smoothies.public.fruit_options")
-    .select(col("FRUIT_NAME"),col('SEARCH_ON))
+    .select(
+        col("FRUIT_NAME"),
+        col("SEARCH_ON")
+    )
     .collect()
 )
 
-fruit_list = [row["FRUIT_NAME"] for row in fruit_df]
+# Create a lookup dictionary:
+# Key = Display Name
+# Value = API Search Value
+fruit_lookup = {
+    row["FRUIT_NAME"]: row["SEARCH_ON"]
+    for row in fruit_df
+}
+
+fruit_list = list(fruit_lookup.keys())
 
 # ----------------------------------------------------
 # Fruit Selection
@@ -63,7 +74,10 @@ if ingredients_list:
 
         st.markdown(f"### 🍎 {fruit}")
 
-        api_url = f"https://my.smoothiefroot.com/api/fruit/{fruit.lower()}"
+        # Use SEARCH_ON value for the API
+        search_value = fruit_lookup[fruit]
+
+        api_url = f"https://my.smoothiefroot.com/api/fruit/{search_value}"
 
         try:
             response = requests.get(api_url, timeout=10)
@@ -71,7 +85,6 @@ if ingredients_list:
             if response.status_code == 200:
                 nutrition = response.json()
 
-                # Convert dictionary to table
                 st.table(nutrition)
 
             else:
