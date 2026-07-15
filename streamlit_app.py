@@ -3,7 +3,7 @@
 
 import streamlit as st
 import requests
-import pandas
+import pandas as pd
 from snowflake.snowpark.functions import col
 
 # ----------------------------------------------------
