@@ -1,46 +1,115 @@
 # Streamlit app for ordering custom smoothies
 # Co-authored with CoCo
-# Import python packages
+
 import streamlit as st
-import os
+import requests
 from snowflake.snowpark.functions import col
 
-# Write directly to the app
-st.title(f"Custom Smoothie Order Form :cup_with_straw:")
-st.write(
-  """Choose the fruits you want in your custom Smoothie!
-  """
-)
+# ----------------------------------------------------
+# Page Title
+# ----------------------------------------------------
+
+st.title("Custom Smoothie Order Form 🥤")
+st.write("Choose the fruits you want in your custom smoothie!")
+
+# ----------------------------------------------------
+# Customer Name
+# ----------------------------------------------------
 
 name_on_order = st.text_input("Name on Smoothie")
-st.write("The name on your Smoothie will be:", name_on_order)
+
+if name_on_order:
+    st.write(f"The name on your smoothie will be: **{name_on_order}**")
+
+# ----------------------------------------------------
+# Connect to Snowflake
+# ----------------------------------------------------
 
 cnx = st.connection("snowflake")
 session = cnx.session()
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
-#st.dataframe(data=my_dataframe, use_container_width=True)
+
+# ----------------------------------------------------
+# Load Fruit Options
+# ----------------------------------------------------
+
+fruit_df = (
+    session.table("smoothies.public.fruit_options")
+    .select(col("FRUIT_NAME"))
+    .collect()
+)
+
+fruit_list = [row["FRUIT_NAME"] for row in fruit_df]
+
+# ----------------------------------------------------
+# Fruit Selection
+# ----------------------------------------------------
 
 ingredients_list = st.multiselect(
-    'Choose up to 5 ingredients:'
-    , my_dataframe
-    , max_selections=5
-    )
+    "Choose up to 5 ingredients:",
+    fruit_list,
+    max_selections=5
+)
+
+# ----------------------------------------------------
+# Submit Order
+# ----------------------------------------------------
 
 if ingredients_list:
-    ingredients_string = ''
-    for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen + ' '
 
-    my_insert_stmt = """ insert into smoothies.public.orders(ingredients,name_on_order)
-            values ('""" + ingredients_string + """','"""+ name_on_order + """')"""
+    ingredients_string = ", ".join(ingredients_list)
 
-    time_to_insert = st.button('Submit Order')
+    st.write("Your smoothie will contain:")
+    st.write(ingredients_string)
+
+    time_to_insert = st.button("Submit Order")
 
     if time_to_insert:
-        session.sql(my_insert_stmt).collect()
-        st.success('Your Smoothie is ordered!', icon="✅")
-   
-import requests  
-smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon)  
-#st.text(smoothiefroot_response.json())
-sf_df = st.dataframe(data=smoothfroot_response.json(), use_container_width=True)
+
+        if not name_on_order.strip():
+            st.error("Please enter a name for your smoothie.")
+        else:
+            insert_sql = """
+                INSERT INTO smoothies.public.orders
+                (ingredients, name_on_order)
+                VALUES (?, ?)
+            """
+
+            session.sql(
+                insert_sql,
+                params=[ingredients_string, name_on_order]
+            ).collect()
+
+            st.success("Your smoothie has been ordered! ✅")
+
+# ----------------------------------------------------
+# Nutrition Information
+# ----------------------------------------------------
+
+st.divider()
+st.subheader("Fruit Nutrition Information")
+
+fruit_to_lookup = st.selectbox(
+    "Choose a fruit to view nutrition facts",
+    fruit_list
+)
+
+if fruit_to_lookup:
+
+    api_url = (
+        f"https://my.smoothiefroot.com/api/fruit/"
+        f"{fruit_to_lookup.lower()}"
+    )
+
+    try:
+        response = requests.get(api_url, timeout=10)
+
+        if response.status_code == 200:
+            st.dataframe(
+                response.json(),
+                use_container_width=True
+            )
+        else:
+            st.warning("Nutrition information not found.")
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error contacting SmoothieFroot API: {e}")
