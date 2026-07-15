@@ -51,6 +51,36 @@ ingredients_list = st.multiselect(
 )
 
 # ----------------------------------------------------
+# Display Nutrition Information
+# ----------------------------------------------------
+
+if ingredients_list:
+
+    st.divider()
+    st.subheader("Nutrition Information")
+
+    for fruit in ingredients_list:
+
+        st.markdown(f"### 🍎 {fruit}")
+
+        api_url = f"https://my.smoothiefroot.com/api/fruit/{fruit.lower()}"
+
+        try:
+            response = requests.get(api_url, timeout=10)
+
+            if response.status_code == 200:
+                nutrition = response.json()
+
+                # Convert dictionary to table
+                st.table(nutrition)
+
+            else:
+                st.warning(f"No nutrition information found for {fruit}.")
+
+        except requests.exceptions.RequestException as e:
+            st.error(f"Error retrieving nutrition information for {fruit}: {e}")
+
+# ----------------------------------------------------
 # Submit Order
 # ----------------------------------------------------
 
@@ -58,16 +88,16 @@ if ingredients_list:
 
     ingredients_string = ", ".join(ingredients_list)
 
-    st.write("Your smoothie will contain:")
-    st.write(ingredients_string)
+    st.write("### Your Smoothie")
+    st.write(f"**Name:** {name_on_order}")
+    st.write(f"**Ingredients:** {ingredients_string}")
 
-    time_to_insert = st.button("Submit Order")
-
-    if time_to_insert:
+    if st.button("Submit Order"):
 
         if not name_on_order.strip():
             st.error("Please enter a name for your smoothie.")
         else:
+
             insert_sql = """
                 INSERT INTO smoothies.public.orders
                 (ingredients, name_on_order)
@@ -79,37 +109,4 @@ if ingredients_list:
                 params=[ingredients_string, name_on_order]
             ).collect()
 
-            st.success("Your smoothie has been ordered! ✅")
-
-# ----------------------------------------------------
-# Nutrition Information
-# ----------------------------------------------------
-
-st.divider()
-st.subheader("Fruit Nutrition Information")
-
-fruit_to_lookup = st.selectbox(
-    "Choose a fruit to view nutrition facts",
-    fruit_list
-)
-
-if fruit_to_lookup:
-
-    api_url = (
-        f"https://my.smoothiefroot.com/api/fruit/"
-        f"{fruit_to_lookup.lower()}"
-    )
-
-    try:
-        response = requests.get(api_url, timeout=10)
-
-        if response.status_code == 200:
-            st.dataframe(
-                response.json(),
-                use_container_width=True
-            )
-        else:
-            st.warning("Nutrition information not found.")
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error contacting SmoothieFroot API: {e}")
+            st.success("✅ Your smoothie has been ordered!")
