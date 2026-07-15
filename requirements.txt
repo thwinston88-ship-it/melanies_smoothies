@@ -1,0 +1,9 @@
+definition_version: 2
+entities:
+  streamlit_app:
+    type: streamlit
+    main_file: Ordering App.py
+    artifacts:
+      - pyproject.toml
+      - Ordering App.py
+      - .streamlit/config.toml
