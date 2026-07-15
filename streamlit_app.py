@@ -34,7 +34,7 @@ session = cnx.session()
 
 fruit_df = (
     session.table("smoothies.public.fruit_options")
-    .select(col("FRUIT_NAME"))
+    .select(col("FRUIT_NAME"),col('SEARCH_ON))
     .collect()
 )
 
